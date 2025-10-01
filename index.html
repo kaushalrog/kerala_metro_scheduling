@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KMRL AI Control Center - SIH25081</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            color: #a0e7ff;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .status-card {
+            flex: 1;
+            min-width: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .status-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
+        }
+
+        .status-card h3 {
+            font-size: 0.9em;
+            color: #a0e7ff;
+            margin-bottom: 10px;
+        }
+
+        .status-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .panel h2 {
+            margin-bottom: 20px;
+            color: #00d4ff;
+            font-size: 1.5em;
+        }
+
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #00ff88);
+            color: #333;
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.6);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            color: white;
+            box-shadow: 0 5px 15px rgba(255, 65, 108, 0.4);
+        }
+
+        .btn-danger:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(255, 65, 108, 0.6);
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            animation: slideIn 0.5s ease;
+            border-left: 4px solid;
+        }
+
+        .alert-warning {
+            background: rgba(255, 193, 7, 0.2);
+            border-color: #ffc107;
+            color: #ffd54f;
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+
+        .alert-danger {
+            background: rgba(255, 65, 108, 0.2);
+            border-color: #ff416c;
+            color: #ff6b9d;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .metro-map {
+            width: 100%;
+            height: 500px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            position: relative;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .map-container {
+            position: relative;
+            width: 1000px;
+            height: 100%;
+        }
+
+        .station-node {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid #00d4ff;
+            background: rgba(0, 212, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            transform: translate(-50%, -50%);
+        }
+
+        .station-node:hover {
+            transform: translate(-50%, -50%) scale(1.8);
+            z-index: 10;
+        }
+
+        .station-node.high-crowd {
+            background: rgba(255, 65, 108, 0.8);
+            border-color: #ff416c;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 15px rgba(255, 65, 108, 0.6);
+        }
+
+        .station-node.medium-crowd {
+            background: rgba(255, 193, 7, 0.8);
+            border-color: #ffc107;
+        }
+
+        .station-node.low-crowd {
+            background: rgba(0, 255, 136, 0.8);
+            border-color: #00ff88;
+        }
+
+        .station-node.delay {
+            box-shadow: 0 0 20px rgba(255, 65, 108, 0.8);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.3); }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .station-label {
+            position: absolute;
+            font-size: 0.65em;
+            color: #a0e7ff;
+            white-space: nowrap;
+            pointer-events: none;
+            transform: translate(-50%, 25px);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .station-info {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #00d4ff;
+            font-size: 0.85em;
+            z-index: 100;
+            display: none;
+            min-width: 200px;
+        }
+
+        .metro-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(0, 212, 255, 0.3), rgba(0, 255, 136, 0.3));
+            transform-origin: left center;
+        }
+
+        .ai-insight {
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 4px solid #00d4ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .ai-insight-title {
+            font-weight: bold;
+            color: #00d4ff;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ai-reasoning {
+            color: #a0e7ff;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .scenario-input {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            color: #a0e7ff;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .input-group select,
+        .input-group input {
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 1em;
+        }
+
+        .input-group select option {
+            background: #1a2a3a;
+            color: #fff;
+        }
+
+        .auto-detection-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin: 5px 5px 5px 0;
+        }
+
+        .badge-delay {
+            background: rgba(255, 65, 108, 0.3);
+            border: 1px solid #ff416c;
+            color: #ff6b9d;
+        }
+
+        .badge-crowd {
+            background: rgba(255, 193, 7, 0.3);
+            border: 1px solid #ffc107;
+            color: #ffd54f;
+        }
+
+        .badge-event {
+            background: rgba(138, 43, 226, 0.3);
+            border: 1px solid #8a2be2;
+            color: #ba55d3;
+        }
+
+        .live-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #00ff88;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .time-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 1em;
+            color: #00d4ff;
+            font-weight: bold;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85em;
+            color: #a0e7ff;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            .scenario-input {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚇 KMRL AI Control Center</h1>
+        <p>Smart Train Induction Planning & Scheduling System | SIH25081</p>
+    </div>
+
+    <div class="status-bar">
+        <div class="status-card">
+            <h3><span class="live-indicator"></span>Active Trains</h3>
+            <div class="value" id="activeTrains">12</div>
+        </div>
+        <div class="status-card">
+            <h3>Standby Trains</h3>
+            <div class="value" id="standbyTrains">3</div>
+        </div>
+        <div class="status-card">
+            <h3>Current Headway</h3>
+            <div class="value" id="currentHeadway">5.2<span style="font-size: 0.5em; color: #a0e7ff;"> min</span></div>
+        </div>
+        <div class="status-card">
+            <h3>System Status</h3>
+            <div class="value" style="font-size: 1.5em; color: #00ff88;" id="systemStatus">NORMAL</div>
+        </div>
+        <div class="status-card">
+            <h3>Total Passengers</h3>
+            <div class="value" id="totalPassengers">0<span style="font-size: 0.5em; color: #a0e7ff;"> now</span></div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>🗺️ Live Metro Map - Real-Time Crowd & Delays</h2>
+        <div class="controls-row">
+            <button class="btn btn-primary" onclick="toggleAutoPlay()" id="playBtn">▶️ Start Live Feed</button>
+            <div class="time-display" id="currentTime">Waiting to start...</div>
+        </div>
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-dot" style="background: rgba(0, 255, 136, 0.8); border-color: #00ff88;"></div>
+                Low Crowd (&lt;200)
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: rgba(255, 193, 7, 0.8); border-color: #ffc107;"></div>
+                Medium Crowd (200-400)
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: rgba(255, 65, 108, 0.8); border-color: #ff416c;"></div>
+                High Crowd (&gt;400)
+            </div>
+            <div class="legend-item">
+                <div style="width: 12px; height: 12px; background: rgba(255, 65, 108, 0.8); border-radius: 50%; animation: blink 1s infinite;"></div>
+                Delay Detected
+            </div>
+        </div>
+        <div class="metro-map">
+            <div class="map-container" id="metroMap"></div>
+        </div>
+        <div class="station-info" id="stationInfo"></div>
+    </div>
+
+    <div class="panel">
+        <h2>🤖 AI Auto-Detection & Recommendations</h2>
+        <p style="color: #a0e7ff; margin-bottom: 15px;">AI continuously monitors and adapts to real-time conditions</p>
+        <div id="detectionContainer">
+            <div style="color: #666; text-align: center; padding: 20px;">
+                Start live feed to see automated incident detection...
+            </div>
+        </div>
+        <div id="aiRecommendations"></div>
+    </div>
+
+    <div class="main-grid">
+        <div class="panel">
+            <h2>📊 Passenger Demand Analysis</h2>
+            <canvas id="demandChart"></canvas>
+        </div>
+
+        <div class="panel">
+            <h2>🎯 "What-If" Scenario Simulator</h2>
+            <p style="color: #a0e7ff; margin-bottom: 15px;">Test how AI handles hypothetical events</p>
+            <div class="scenario-input">
+                <div class="input-group">
+                    <label>Event Type</label>
+                    <select id="eventType">
+                        <option value="concert">🎵 Concert/Festival</option>
+                        <option value="match">⚽ Sports Match</option>
+                        <option value="rally">📢 Political Rally</option>
+                        <option value="newyear">🎆 New Year's Eve</option>
+                        <option value="hartal">🚫 Strike/Hartal</option>
+                        <option value="rain">🌧️ Heavy Rain</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Location</label>
+                    <select id="eventStation">
+                        <option value="JLN">JLN Stadium</option>
+                        <option value="MGR">MG Road</option>
+                        <option value="TKL">Town Hall</option>
+                        <option value="ERS">Ernakulam South</option>
+                        <option value="PAL">Palarivattom</option>
+                        <option value="EDA">Edapally</option>
+                        <option value="KAL">Kalamassery</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Expected Crowd Increase</label>
+                    <input type="number" id="crowdMultiplier" value="2.5" min="1" max="5" step="0.5">
+                </div>
+                <div class="input-group">
+                    <label>Time of Day</label>
+                    <select id="timeOfDay">
+                        <option value="morning">Morning (6-10 AM)</option>
+                        <option value="afternoon">Afternoon (12-3 PM)</option>
+                        <option value="evening" selected>Evening (5-9 PM)</option>
+                        <option value="night">Night (9 PM-12 AM)</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="runWhatIfScenario()" style="width: 100%; margin-top: 10px;">
+                🔮 Generate AI Plan
+            </button>
+            <div id="scenarioResults"></div>
+        </div>
+    </div>
+
+    <script>
+        // Load and parse CSV data
+        let metroData = [];
+        let currentDataIndex = 0;
+        let isAutoPlaying = false;
+        let autoPlayInterval = null;
+
+        // System state
+        let systemState = {
+            activeTrains: 12,
+            standbyTrains: 3,
+            totalTrains: 15,
+            currentHeadway: 5.2,
+            incidents: [],
+            detectedEvents: [],
+            stationCrowdLevels: {},
+            currentData: null
+        };
+
+        // Station coordinates for map visualization (scaled for better visibility)
+        const stationCoordinates = {
+            'ALV': {x: 50, y: 250, name: 'Aluva'},
+            'PLV': {x: 100, y: 250, name: 'Pulinchodu'},
+            'CMP': {x: 150, y: 250, name: 'Companypady'},
+            'AMB': {x: 200, y: 250, name: 'Ambattukavu'},
+            'KAL': {x: 250, y: 250, name: 'Kalamassery'},
+            'CUS': {x: 300, y: 250, name: 'CUSAT'},
+            'PAT': {x: 350, y: 250, name: 'Pathadipalam'},
+            'EDA': {x: 400, y: 250, name: 'Edapally'},
+            'CGL': {x: 450, y: 250, name: 'Changampuzha'},
+            'PAL': {x: 500, y: 250, name: 'Palarivattom'},
+            'JLN': {x: 550, y: 250, name: 'JLN Stadium'},
+            'KALOOR': {x: 600, y: 250, name: 'Kaloor'},
+            'TKL': {x: 650, y: 250, name: 'Town Hall'},
+            'MGR': {x: 700, y: 250, name: 'MG Road'},
+            'MHR': {x: 750, y: 250, name: "Maharaja's"},
+            'ERS': {x: 800, y: 250, name: 'Ernakulam South'},
+            'KDV': {x: 850, y: 250, name: 'Kadavanthra'},
+            'VYT': {x: 900, y: 250, name: 'Vyttila'},
+            'PET': {x: 950, y: 250, name: 'Petta'}
+        };
+
+        // Parse CSV data
+        async function loadMetroData() {
+            try {
+                const csvData = await window.fs.readFile('synthetic_kerala_metro.txt', { encoding: 'utf8' });
+                const lines = csvData.trim().split('\n');
+                
+                metroData = lines.slice(1).map(line => {
+                    const values = line.split(',');
+                    return {
+                        timestamp: values[0],
+                        station_id: values[1],
+                        station_name: values[2],
+                        train_id: values[3],
+                        direction: values[4],
+                        ridership_count: parseInt(values[5]),
+                        headway_minutes: parseFloat(values[6]),
+                        delay_minutes: parseFloat(values[7]),
+                        is_peak_hour: parseInt(values[8]),
+                        weather_condition: values[9],
+                        event: values[10]
+                    };
+                });
+                
+                initializeSystem();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showAlert('⚠️ Could not load metro data. Using simulation mode.', 'warning');
+                initializeSystem();
+            }
+        }
+
+        // Initialize the system
+        function initializeSystem() {
+            drawMetroMap();
+            initializeDemandChart();
+        }
+
+        // Draw metro map with stations
+        function drawMetroMap() {
+            const mapContainer = document.getElementById('metroMap');
+            mapContainer.innerHTML = '';
+
+            // Draw metro line
+            const line = document.createElement('div');
+            line.className = 'metro-line';
+            line.style.left = '50px';
+            line.style.top = '250px';
+            line.style.width = '900px';
+            mapContainer.appendChild(line);
+
+            // Draw stations
+            Object.keys(stationCoordinates).forEach(stationId => {
+                const coord = stationCoordinates[stationId];
+                
+                const node = document.createElement('div');
+                node.className = 'station-node low-crowd';
+                node.id = `station-${stationId}`;
+                node.style.left = coord.x + 'px';
+                node.style.top = coord.y + 'px';
+                
+                const label = document.createElement('div');
+                label.className = 'station-label';
+                label.textContent = coord.name;
+                label.style.left = coord.x + 'px';
+                label.style.top = coord.y + 'px';
+                
+                node.addEventListener('mouseenter', (e) => showStationInfo(stationId, e));
+                node.addEventListener('mouseleave', hideStationInfo);
+                
+                mapContainer.appendChild(node);
+                mapContainer.appendChild(label);
+            });
+        }
+
+        // Show station info on hover
+        function showStationInfo(stationId, event) {
+            const info = document.getElementById('stationInfo');
+            const coord = stationCoordinates[stationId];
+            const crowdLevel = systemState.stationCrowdLevels[stationId] || 0;
+            
+            info.innerHTML = `
+                <strong>${coord.name}</strong><br>
+                Current Passengers: ${crowdLevel}<br>
+                Status: ${crowdLevel > 400 ? 'High Crowd' : crowdLevel > 200 ? 'Medium' : 'Normal'}
+            `;
+            
+            info.style.display = 'block';
+            info.style.left = (coord.x + 20) + 'px';
+            info.style.top = (coord.y - 40) + 'px';
+        }
+
+        function hideStationInfo() {
+            document.getElementById('stationInfo').style.display = 'none';
+        }
+
+        // Update station visualization
+        function updateStationVisuals(data) {
+            const node = document.getElementById(`station-${data.station_id}`);
+            if (!node) return;
+
+            node.className = 'station-node';
+            
+            if (data.ridership_count > 400) {
+                node.classList.add('high-crowd');
+            } else if (data.ridership_count > 200) {
+                node.classList.add('medium-crowd');
+            } else {
+                node.classList.add('low-crowd');
+            }
+            
+            if (data.delay_minutes > 2) {
+                node.classList.add('delay');
+            }
+
+            systemState.stationCrowdLevels[data.station_id] = data.ridership_count;
+        }
+
+        // Initialize demand chart
+        let demandChart;
+        function initializeDemandChart() {
+            const ctx = document.getElementById('demandChart').getContext('2d');
+            demandChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Passengers',
+                        data: [],
+                        borderColor: '#00d4ff',
+                        backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#a0e7ff' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        x: {
+                            ticks: { color: '#a0e7ff' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Toggle auto-play of data feed
+        function toggleAutoPlay() {
+            isAutoPlaying = !isAutoPlaying;
+            const btn = document.getElementById('playBtn');
+            
+            if (isAutoPlaying) {
+                btn.textContent = '⏸️ Pause Live Feed';
+                btn.classList.add('btn-danger');
+                btn.classList.remove('btn-primary');
+                startAutoPlay();
+            } else {
+                btn.textContent = '▶️ Resume Live Feed';
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-primary');
+                stopAutoPlay();
+            }
+        }
+
+        function startAutoPlay() {
+            if (metroData.length === 0) {
+                generateSimulatedData();
+            }
+            
+            autoPlayInterval = setInterval(() => {
+                if (currentDataIndex < metroData.length) {
+                    processDataPoint(metroData[currentDataIndex]);
+                    currentDataIndex++;
+                } else {
+                    currentDataIndex = 0;
+                }
+            }, 2000);
+        }
+
+        function stopAutoPlay() {
+            if (autoPlayInterval) {
+                clearInterval(autoPlayInterval);
+                autoPlayInterval = null;
+            }
+        }
+
+        // Process each data point
+        function processDataPoint(data) {
+            systemState.currentData = data;
+            
+            // Update time display
+            const time = new Date(data.timestamp);
+            document.getElementById('currentTime').textContent = time.toLocaleString();
+            
+            // Update visuals
+            updateStationVisuals(data);
+            
+            // Update chart
+            updateDemandChart(data);
+            
+            // Update dashboard
+            updateDashboard(data);
+            
+            // Auto-detect incidents
+            autoDetectIncidents(data);
+            
+            // Generate AI recommendations
+            generateAIRecommendations(data);
+        }
+
+        // Auto-detect incidents from data
+        function autoDetectIncidents(data) {
+            const container = document.getElementById('detectionContainer');
+            let detections = [];
+
+            // Detect delays
+            if (data.delay_minutes > 3) {
+                detections.push({
+                    type: 'delay',
+                    message: `⚠️ Delay detected at ${data.station_name}: ${data.delay_minutes} minutes`,
+                    severity: 'warning'
+                });
+            }
+
+            // Detect crowd surges
+            if (data.ridership_count > 500) {
+                detections.push({
+                    type: 'crowd',
+                    message: `👥 High crowd surge at ${data.station_name}: ${data.ridership_count} passengers`,
+                    severity: 'warning'
+                });
+            }
+
+            // Detect events
+            if (data.event && data.event !== 'None') {
+                detections.push({
+                    type: 'event',
+                    message: `📅 Event detected: ${data.event} at ${data.station_name}`,
+                    severity: 'info'
+                });
+            }
+
+            // Detect weather issues
+            if (data.weather_condition === 'Heavy_Rain' || data.weather_condition === 'Water_Logging') {
+                detections.push({
+                    type: 'weather',
+                    message: `🌧️ Weather alert: ${data.weather_condition.replace('_', ' ')}`,
+                    severity: 'warning'
+                });
+            }
+
+            // Display detections
+            if (detections.length > 0) {
+                container.innerHTML = detections.map(d => `
+                    <div class="auto-detection-badge badge-${d.type === 'delay' ? 'delay' : d.type === 'crowd' ? 'crowd' : 'event'}">
+                        ${d.message}
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div style="color: #00ff88; padding: 10px;">✅ All systems normal</div>';
+            }
+        }
+
+        // Generate AI recommendations
+        function generateAIRecommendations(data) {
+            const container = document.getElementById('aiRecommendations');
+            let recommendations = [];
+
+            // Analyze and recommend based on conditions
+            if (data.delay_minutes > 3) {
+                const newHeadway = Math.max(3, systemState.currentHeadway * 0.85);
+                recommendations.push({
+                    title: '🚨 Delay Mitigation Strategy',
+                    action: `Reduce headway to ${newHeadway.toFixed(1)} minutes`,
+                    reasoning: `Detected ${data.delay_minutes} min delay at ${data.station_name}. Reducing headway will help clear passenger backlog and restore schedule adherence. Expected recovery time: 15-20 minutes.`
+                });
+            }
+
+            if (data.ridership_count > 500 && systemState.standbyTrains > 0) {
+                recommendations.push({
+                    title: '👥 Crowd Management Protocol',
+                    action: `Induct ${Math.min(2, systemState.standbyTrains)} standby train(s)`,
+                    reasoning: `Extreme crowd level (${data.ridership_count} passengers) detected at ${data.station_name}. Historical data shows ${data.is_peak_hour ? 'peak hour' : 'off-peak'} demand at this level requires additional capacity. Inducting standby trains will reduce wait times by ~40% and prevent platform overcrowding.`
+                });
+            }
+
+            if (data.event && data.event !== 'None') {
+                const eventType = data.event.replace('_', ' ');
+                recommendations.push({
+                    title: '📅 Event-Driven Optimization',
+                    action: `Activate special event schedule for ${eventType}`,
+                    reasoning: `${eventType} detected at ${data.station_name}. Based on historical patterns, similar events cause 2-3x normal ridership. Recommended actions: (1) Pre-position extra trains near venue, (2) Increase service frequency by 30%, (3) Deploy crowd management staff.`
+                });
+            }
+
+            if (data.weather_condition === 'Heavy_Rain') {
+                recommendations.push({
+                    title: '🌧️ Weather Response Plan',
+                    action: 'Extend headway by 15-20% and reduce speed',
+                    reasoning: `Heavy rain detected. Safety protocols require reduced speeds, which increases travel time. Extending headway prevents train bunching while maintaining safety. Monitor for water logging at low-lying stations (Edapally, Vyttila).`
+                });
+            }
+
+            // Display recommendations
+            if (recommendations.length > 0) {
+                container.innerHTML = recommendations.map(r => `
+                    <div class="ai-insight">
+                        <div class="ai-insight-title">
+                            <span>🤖</span>
+                            <span>${r.title}</span>
+                        </div>
+                        <div style="margin: 8px 0; color: #00ff88; font-weight: bold;">
+                            → ${r.action}
+                        </div>
+                        <div class="ai-reasoning">
+                            <strong>AI Reasoning:</strong> ${r.reasoning}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '';
+            }
+        }
+
+        // Update demand chart
+        function updateDemandChart(data) {
+            const time = new Date(data.timestamp).toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            if (demandChart.data.labels.length > 20) {
+                demandChart.data.labels.shift();
+                demandChart.data.datasets[0].data.shift();
+            }
+            
+            demandChart.data.labels.push(time);
+            demandChart.data.datasets[0].data.push(data.ridership_count);
+            demandChart.update('none');
+        }
+
+        // Update dashboard
+        function updateDashboard(data) {
+            // Calculate total passengers from recent data
+            const recentData = metroData.slice(Math.max(0, currentDataIndex - 5), currentDataIndex);
+            const totalPass = recentData.reduce((sum, d) => sum + d.ridership_count, 0);
+            document.getElementById('totalPassengers').innerHTML = 
+                `${totalPass}<span style="font-size: 0.5em; color: #a0e7ff;"> now</span>`;
+            
+            // Update headway based on conditions
+            if (data.ridership_count > 500) {
+                systemState.currentHeadway = Math.max(3, systemState.currentHeadway * 0.9);
+            } else if (data.ridership_count < 150) {
+                systemState.currentHeadway = Math.min(10, systemState.currentHeadway * 1.05);
+            }
+            
+            document.getElementById('currentHeadway').innerHTML = 
+                `${systemState.currentHeadway.toFixed(1)}<span style="font-size: 0.5em; color: #a0e7ff;"> min</span>`;
+            
+            // Update system status
+            let status = 'NORMAL';
+            let color = '#00ff88';
+            
+            if (data.delay_minutes > 3 || data.ridership_count > 500) {
+                status = 'ALERT';
+                color = '#ffc107';
+            }
+            
+            if (data.delay_minutes > 5 || data.ridership_count > 700) {
+                status = 'CRITICAL';
+                color = '#ff416c';
+            }
+            
+            document.getElementById('systemStatus').textContent = status;
+            document.getElementById('systemStatus').style.color = color;
+        }
+
+        // Run "What-If" scenario simulation
+        function runWhatIfScenario() {
+            const eventType = document.getElementById('eventType').value;
+            const station = document.getElementById('eventStation').value;
+            const crowdMult = parseFloat(document.getElementById('crowdMultiplier').value);
+            const timeOfDay = document.getElementById('timeOfDay').value;
+            
+            const resultsContainer = document.getElementById('scenarioResults');
+            
+            // Simulate scenario
+            const baselineCrowd = timeOfDay === 'evening' ? 400 : timeOfDay === 'morning' ? 350 : 200;
+            const expectedCrowd = Math.round(baselineCrowd * crowdMult);
+            
+            let recommendations = [];
+            let trainsNeeded = systemState.activeTrains;
+            let headway = systemState.currentHeadway;
+            
+            // AI analysis based on event type
+            switch(eventType) {
+                case 'concert':
+                case 'match':
+                    trainsNeeded = Math.ceil(systemState.activeTrains * 1.4);
+                    headway = Math.max(2.5, systemState.currentHeadway * 0.6);
+                    recommendations.push(
+                        `Deploy ${trainsNeeded - systemState.activeTrains} additional trains`,
+                        `Reduce headway to ${headway.toFixed(1)} minutes starting 1 hour before event`,
+                        `Station ${station} with extra staff for crowd management`,
+                        `Prepare express services post-event for faster dispersal`
+                    );
+                    break;
+                    
+                case 'newyear':
+                    trainsNeeded = systemState.totalTrains;
+                    headway = 2.5;
+                    recommendations.push(
+                        `Activate ALL ${systemState.totalTrains} trains (100% fleet utilization)`,
+                        `Implement minimum headway of ${headway} minutes`,
+                        `Deploy security and crowd control at all major stations`,
+                        `Extend service hours until 2 AM`,
+                        `Pre-position trains near entertainment districts`
+                    );
+                    break;
+                    
+                case 'hartal':
+                    trainsNeeded = Math.ceil(systemState.activeTrains * 0.4);
+                    headway = 15;
+                    recommendations.push(
+                        `Reduce service to ${trainsNeeded} trains only`,
+                        `Increase headway to ${headway} minutes (reduced demand)`,
+                        `Focus on essential connectivity routes`,
+                        `Keep ${systemState.activeTrains - trainsNeeded} trains on standby for emergencies`
+                    );
+                    break;
+                    
+                case 'rain':
+                    trainsNeeded = systemState.activeTrains;
+                    headway = Math.min(12, systemState.currentHeadway * 1.3);
+                    recommendations.push(
+                        `Maintain current fleet but extend headway to ${headway.toFixed(1)} min`,
+                        `Reduce speed by 20% for safety during heavy rain`,
+                        `Monitor water-logging at Edapally, Kalamassery, Vyttila`,
+                        `Activate emergency drainage protocols`,
+                        `Keep engineering teams on standby`
+                    );
+                    break;
+                    
+                default:
+                    trainsNeeded = Math.ceil(systemState.activeTrains * 1.2);
+                    headway = Math.max(3, systemState.currentHeadway * 0.75);
+                    recommendations.push(
+                        `Induct ${trainsNeeded - systemState.activeTrains} additional trains`,
+                        `Adjust headway to ${headway.toFixed(1)} minutes`,
+                        `Enhanced monitoring at ${stationCoordinates[station].name}`
+                    );
+            }
+            
+            // Calculate capacity and efficiency
+            const capacity = Math.round((trainsNeeded * 300) / headway * 60);
+            const efficiency = Math.min(100, Math.round((capacity / expectedCrowd) * 100));
+            
+            resultsContainer.innerHTML = `
+                <div class="ai-insight" style="margin-top: 20px;">
+                    <div class="ai-insight-title">
+                        <span>🔮</span>
+                        <span>AI-Generated Scenario Plan</span>
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <strong style="color: #00d4ff;">Event:</strong> ${document.getElementById('eventType').options[document.getElementById('eventType').selectedIndex].text}<br>
+                        <strong style="color: #00d4ff;">Location:</strong> ${stationCoordinates[station].name}<br>
+                        <strong style="color: #00d4ff;">Expected Crowd:</strong> ${expectedCrowd} passengers/hour<br>
+                        <strong style="color: #00d4ff;">Time:</strong> ${document.getElementById('timeOfDay').options[document.getElementById('timeOfDay').selectedIndex].text}
+                    </div>
+                    <div class="ai-reasoning">
+                        <strong>AI Recommendations:</strong>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            ${recommendations.map(r => `<li style="margin: 5px 0;">${r}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+                        <div>
+                            <div style="font-size: 0.85em; color: #a0e7ff;">Trains Needed</div>
+                            <div style="font-size: 1.5em; font-weight: bold; color: #00ff88;">${trainsNeeded}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85em; color: #a0e7ff;">Headway</div>
+                            <div style="font-size: 1.5em; font-weight: bold; color: #00ff88;">${headway.toFixed(1)} min</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85em; color: #a0e7ff;">Capacity Match</div>
+                            <div style="font-size: 1.5em; font-weight: bold; color: ${efficiency > 90 ? '#00ff88' : efficiency > 70 ? '#ffc107' : '#ff416c'};">${efficiency}%</div>
+                        </div>
+                    </div>
+                    <div class="ai-reasoning" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+                        <strong>Why This Works:</strong> The AI analyzed historical data from similar events and determined that a ${crowdMult}x crowd increase requires ${((trainsNeeded/systemState.activeTrains - 1) * 100).toFixed(0)}% more capacity. The optimized headway of ${headway.toFixed(1)} minutes balances passenger demand with operational efficiency, achieving ${efficiency}% capacity matching. ${efficiency > 90 ? 'Excellent coverage expected.' : efficiency > 70 ? 'Good coverage with minor wait times.' : 'Additional measures may be needed for peak periods.'}
+                    </div>
+                </div>
+            `;
+            
+            showAlert(`✅ AI scenario plan generated for ${document.getElementById('eventType').options[document.getElementById('eventType').selectedIndex].text}`, 'success');
+        }
+
+        // Show alert
+        function showAlert(message, type = 'warning') {
+            const container = document.body;
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alert.style.position = 'fixed';
+            alert.style.top = '20px';
+            alert.style.right = '20px';
+            alert.style.zIndex = '1000';
+            alert.style.maxWidth = '400px';
+            container.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Generate simulated data if file not available
+        function generateSimulatedData() {
+            const stations = Object.keys(stationCoordinates);
+            const now = new Date();
+            
+            for (let i = 0; i < 50; i++) {
+                const time = new Date(now.getTime() + i * 300000);
+                const station = stations[i % stations.length];
+                const isPeak = time.getHours() >= 7 && time.getHours() <= 9 || time.getHours() >= 17 && time.getHours() <= 19;
+                
+                metroData.push({
+                    timestamp: time.toISOString(),
+                    station_id: station,
+                    station_name: stationCoordinates[station].name,
+                    train_id: `T${String(Math.floor(Math.random() * 15) + 1).padStart(3, '0')}`,
+                    direction: i % 2 === 0 ? 'Southbound' : 'Northbound',
+                    ridership_count: Math.floor(Math.random() * (isPeak ? 600 : 300)) + 50,
+                    headway_minutes: isPeak ? 5 : 8,
+                    delay_minutes: Math.random() > 0.8 ? Math.floor(Math.random() * 5) : 0,
+                    is_peak_hour: isPeak ? 1 : 0,
+                    weather_condition: Math.random() > 0.9 ? 'Heavy_Rain' : 'Clear',
+                    event: Math.random() > 0.95 ? 'Concert' : 'None'
+                });
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('load', loadMetroData);
+    </script>
+</body>
+</html>
